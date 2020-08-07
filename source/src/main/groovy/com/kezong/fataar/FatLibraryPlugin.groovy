@@ -31,39 +31,36 @@ class FatLibraryPlugin implements Plugin<Project> {
         checkAndroidPlugin()
         final Configuration embedConf = project.configurations.create('embed')
         createConfiguration(embedConf)
-        Utils.logAnytime("Creating configuration embed")
+        Utils.logInfo("Creating configuration embed")
 
         project.android.buildTypes.all { buildType ->
             String configName = buildType.name + CONFIG_SUFFIX
             Configuration configuration = project.configurations.create(configName)
             createConfiguration(configuration)
-            Utils.logAnytime("Creating configuration " + configName)
+            Utils.logInfo("Creating configuration " + configName)
         }
 
         project.android.productFlavors.all { flavor ->
             String configName = flavor.name + CONFIG_SUFFIX
             Configuration configuration = project.configurations.create(configName)
             createConfiguration(configuration)
-            Utils.logAnytime("Creating configuration " + configName)
+            Utils.logInfo("Creating configuration " + configName)
             project.android.buildTypes.all { buildType ->
                 String variantName = flavor.name + buildType.name.capitalize()
                 String variantConfigName = variantName + CONFIG_SUFFIX
                 Configuration variantConfiguration = project.configurations.create(variantConfigName)
                 createConfiguration(variantConfiguration)
-                Utils.logAnytime("Creating configuration " + variantConfigName)
+                Utils.logInfo("Creating configuration " + variantConfigName)
             }
         }
 
         project.afterEvaluate {
             Set<ResolvedArtifact> commonArtifacts = resolveArtifacts(embedConf)
             Set<ResolvedDependency> commonUnResolveArtifacts = dealUnResolveArtifacts(embedConf, commonArtifacts)
-            if (commonArtifacts.size() > 0 || commonUnResolveArtifacts.size() > 0) {
-                Utils.logAnytime("--------------------------"
-                        + "[common]"
-                        + "--------------------------")
-                printArtifactsInfo(commonArtifacts)
-                printUnResolveArtifactsInfo(commonUnResolveArtifacts)
-            }
+
+            printArtifactsInfo(commonArtifacts, "embed")
+            printUnResolveArtifactsInfo(commonUnResolveArtifacts, "embed")
+
             project.android.libraryVariants.all { variant ->
                 String buildTypeConfigName = variant.getBuildType().name + CONFIG_SUFFIX
                 Configuration buildTypeConfiguration 
@@ -114,19 +111,8 @@ class FatLibraryPlugin implements Plugin<Project> {
                 unResolveArtifacts.addAll(commonUnResolveArtifacts)
                 unResolveArtifacts.addAll(variantUnResolveArtifacts)
 
-                if (variantArtifacts.size() > 0 || variantUnResolveArtifacts.size() > 0) {
-                    if (variant.getFlavorName()) {
-                        Utils.logAnytime("--------------------------"
-                                + "[${variant.getFlavorName()}][${variant.getBuildType().name}]"
-                                + "--------------------------")
-                    } else {
-                        Utils.logAnytime("--------------------------"
-                                + "[${variant.getBuildType().name}]"
-                                + "--------------------------")
-                    }
-                    printArtifactsInfo(variantArtifacts)
-                    printUnResolveArtifactsInfo(variantUnResolveArtifacts)
-                }
+                printArtifactsInfo(variantArtifacts, variant.getFlavorName(), variant.getBuildType().name)
+                printUnResolveArtifactsInfo(variantUnResolveArtifacts, variant.getFlavorName(), variant.getBuildType().name)
 
                 processVariant(variant, artifacts, unResolveArtifacts)
             }
@@ -189,18 +175,18 @@ class FatLibraryPlugin implements Plugin<Project> {
         return Collections.unmodifiableSet(dependencySet)
     }
 
-    private static printArtifactsInfo(Set<ResolvedArtifact> artifacts) {
+    private static printArtifactsInfo(Set<ResolvedArtifact> artifacts, String... tags) {
         if (artifacts != null && artifacts.size() > 0) {
             artifacts.each { artifact ->
-                Utils.logAnytime("[embed detected][$artifact.type]${artifact.moduleVersion.id}")
+                Utils.logAnytime("${tags.grep().collect{'['+it+']'}.join()}[$artifact.type]${artifact.moduleVersion.id}")
             }
         }
     }
 
-    private static printUnResolveArtifactsInfo(Set<ResolvedDependency> dependencies) {
+    private static printUnResolveArtifactsInfo(Set<ResolvedDependency> dependencies, String... tags) {
         if (dependencies != null && dependencies.size() > 0) {
-            dependencies.each { it ->
-                Utils.logAnytime("[embed detected']${it.name}")
+            dependencies.each { dependency ->
+                Utils.logAnytime("${tags.grep().collect{'['+it+']'}.join()}${dependency.name}")
             }
         }
     }
